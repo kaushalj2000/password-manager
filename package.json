@@ -9,6 +9,9 @@
     "dist": "electron-builder --dir",
     "build": "electron-builder"
   },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
   "devDependencies": {
     "electron": "^37.0.0",
     "electron-builder": "^25.1.8"
@@ -34,6 +37,11 @@
     "mac": {
       "target": "dmg",
       "category": "public.app-category.productivity"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "kaushalj2000",
+      "repo": "password-manager"
     }
   }
 }

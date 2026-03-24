@@ -30,6 +30,8 @@ const importGoogleInput = document.getElementById("importGoogleInput");
 const autoLockSelect = document.getElementById("autoLockSelect");
 const autoLockWarning = document.getElementById("autoLockWarning");
 const stayUnlockedBtn = document.getElementById("stayUnlockedBtn");
+const updateStatusText = document.getElementById("updateStatusText");
+const updateActionBtn = document.getElementById("updateActionBtn");
 
 const form = document.getElementById("passwordForm");
 const entryIdInput = document.getElementById("entryId");
@@ -65,6 +67,10 @@ let vaultMetadata = null;
 let toastTimer;
 let autoLockTimer;
 let autoLockWarningTimer;
+let updateState = {
+  status: "idle",
+  message: "Auto-update status will appear here.",
+};
 const ACTIVITY_EVENTS = ["pointerdown", "keydown", "mousemove", "scroll", "touchstart"];
 
 function normalizeEntries(rawEntries) {
@@ -745,6 +751,36 @@ function escapeHtml(text) {
     .replaceAll("'", "&#39;");
 }
 
+function renderUpdateState() {
+  updateStatusText.textContent = updateState.message;
+
+  if (!window.desktopAPI) {
+    updateActionBtn.textContent = "Desktop Only";
+    updateActionBtn.disabled = true;
+    return;
+  }
+
+  updateActionBtn.disabled = false;
+
+  if (updateState.status === "available") {
+    updateActionBtn.textContent = "Download Update";
+    return;
+  }
+
+  if (updateState.status === "downloading") {
+    updateActionBtn.textContent = "Downloading...";
+    updateActionBtn.disabled = true;
+    return;
+  }
+
+  if (updateState.status === "downloaded") {
+    updateActionBtn.textContent = "Restart to Install";
+    return;
+  }
+
+  updateActionBtn.textContent = "Check for Updates";
+}
+
 function parseCsvLine(line) {
   const values = [];
   let current = "";
@@ -1065,6 +1101,14 @@ function initializeApp() {
   lengthValue.textContent = lengthRange.value;
   generatePassword();
   renderEntries();
+  renderUpdateState();
+
+  if (window.desktopAPI?.onUpdateStatus) {
+    window.desktopAPI.onUpdateStatus((payload) => {
+      updateState = payload;
+      renderUpdateState();
+    });
+  }
 }
 
 lengthRange.addEventListener("input", () => {
@@ -1163,6 +1207,23 @@ importGoogleInput.addEventListener("change", (event) => {
 stayUnlockedBtn.addEventListener("click", () => {
   resetAutoLockTimer();
   showToast("Auto-lock timer reset.");
+});
+updateActionBtn.addEventListener("click", () => {
+  if (!window.desktopAPI) {
+    return;
+  }
+
+  if (updateState.status === "available") {
+    window.desktopAPI.downloadUpdate();
+    return;
+  }
+
+  if (updateState.status === "downloaded") {
+    window.desktopAPI.installUpdate();
+    return;
+  }
+
+  window.desktopAPI.checkForUpdates();
 });
 
 initializeApp();
