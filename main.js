@@ -2,10 +2,10 @@ const { app, BrowserWindow, dialog, ipcMain } = require("electron");
 const fs = require("fs/promises");
 const path = require("path");
 
-ipcMain.handle("vault:save", async () => {
+ipcMain.handle("vault:save", async (_event, suggestedName = "password-manager.vault") => {
   const result = await dialog.showSaveDialog({
     title: "Create Vault File",
-    defaultPath: "password-manager.vault",
+    defaultPath: suggestedName,
     filters: [{ name: "Encrypted Password Vault", extensions: ["vault"] }],
   });
 

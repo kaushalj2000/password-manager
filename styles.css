@@ -201,6 +201,28 @@ textarea {
   gap: 12px;
 }
 
+.topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.auto-lock-group {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  max-width: 220px;
+}
+
+.auto-lock-select {
+  border: 1px solid rgba(95, 76, 58, 0.18);
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--ink);
+}
+
 .panel-heading {
   margin-bottom: 18px;
 }
@@ -355,6 +377,26 @@ textarea {
   font-size: 1.15rem;
 }
 
+.entry-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pin-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(217, 178, 111, 0.22);
+  color: var(--bronze-deep);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .entry-meta {
   flex-wrap: wrap;
 }
@@ -423,6 +465,25 @@ textarea {
   transform: translateY(0);
 }
 
+.auto-lock-warning {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: rgba(31, 41, 55, 0.96);
+  color: white;
+  box-shadow: var(--shadow);
+  z-index: 20;
+}
+
+.auto-lock-warning-text {
+  margin: 0;
+}
+
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -457,7 +518,13 @@ textarea {
   .entry-header,
   .entry-meta,
   .password-row,
-  .topbar-row {
+  .topbar-row,
+  .topbar-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .auto-lock-warning {
     flex-direction: column;
     align-items: stretch;
   }

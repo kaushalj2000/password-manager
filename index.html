@@ -85,8 +85,23 @@
           <div>
             <p class="eyebrow">Vault Status</p>
             <h2>Unlocked session</h2>
+            <label class="auto-lock-group" for="autoLockSelect">
+              <span class="field-label">Auto-lock after inactivity</span>
+              <select id="autoLockSelect" class="auto-lock-select">
+                <option value="1">1 minute</option>
+                <option value="5" selected>5 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="0">Never</option>
+              </select>
+            </label>
           </div>
-          <button type="button" class="secondary-button" id="lockVaultBtn">Lock Vault</button>
+          <div class="topbar-actions">
+            <button type="button" class="secondary-button" id="importGoogleBtn">Import Google Passwords</button>
+            <button type="button" class="secondary-button" id="exportBackupBtn">Export Backup</button>
+            <button type="button" class="secondary-button" id="importBackupBtn">Import Backup</button>
+            <button type="button" class="secondary-button" id="lockVaultBtn">Lock Vault</button>
+          </div>
         </div>
       </section>
 
@@ -199,7 +214,14 @@
     </main>
   </div>
 
+  <div id="autoLockWarning" class="auto-lock-warning hidden" aria-live="polite">
+    <p class="auto-lock-warning-text">Vault will lock soon.</p>
+    <button type="button" class="ghost-button" id="stayUnlockedBtn">Stay Unlocked</button>
+  </div>
+
   <div id="toast" class="toast" aria-live="polite"></div>
+  <input id="importBackupInput" type="file" accept=".vault,.backup" class="hidden">
+  <input id="importGoogleInput" type="file" accept=".csv,text/csv" class="hidden">
 
   <script src="script.js"></script>
 </body>

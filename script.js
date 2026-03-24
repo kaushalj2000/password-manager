@@ -1,5 +1,7 @@
 const LEGACY_STORAGE_KEY = "vault-password-manager-entries";
 const ITERATIONS = 250000;
+const AUTO_LOCK_STORAGE_KEY = "password-manager-auto-lock-minutes";
+const AUTO_LOCK_WARNING_MS = 15000;
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
@@ -20,6 +22,14 @@ const createVaultFileBtn = document.getElementById("createVaultFileBtn");
 const openVaultFileBtn = document.getElementById("openVaultFileBtn");
 const lockVaultBtn = document.getElementById("lockVaultBtn");
 const activeVaultName = document.getElementById("activeVaultName");
+const importGoogleBtn = document.getElementById("importGoogleBtn");
+const exportBackupBtn = document.getElementById("exportBackupBtn");
+const importBackupBtn = document.getElementById("importBackupBtn");
+const importBackupInput = document.getElementById("importBackupInput");
+const importGoogleInput = document.getElementById("importGoogleInput");
+const autoLockSelect = document.getElementById("autoLockSelect");
+const autoLockWarning = document.getElementById("autoLockWarning");
+const stayUnlockedBtn = document.getElementById("stayUnlockedBtn");
 
 const form = document.getElementById("passwordForm");
 const entryIdInput = document.getElementById("entryId");
@@ -53,6 +63,16 @@ let sessionKey = null;
 let vaultTarget = null;
 let vaultMetadata = null;
 let toastTimer;
+let autoLockTimer;
+let autoLockWarningTimer;
+const ACTIVITY_EVENTS = ["pointerdown", "keydown", "mousemove", "scroll", "touchstart"];
+
+function normalizeEntries(rawEntries) {
+  return rawEntries.map((entry) => ({
+    ...entry,
+    pinned: Boolean(entry.pinned),
+  }));
+}
 
 function loadLegacyEntries() {
   try {
@@ -171,7 +191,7 @@ function updateSelectedFileUi() {
 
 async function pickNewVaultFile() {
   if (window.desktopAPI) {
-    const result = await window.desktopAPI.saveVaultFile();
+    const result = await window.desktopAPI.saveVaultFile("password-manager.vault");
     if (result?.canceled || !result?.filePath) {
       return;
     }
@@ -299,7 +319,7 @@ async function migrateLegacyEntriesIntoFile() {
 async function createVaultFile(masterPassword) {
   const salt = randomBytes(16);
   const key = await deriveAesKey(masterPassword, salt);
-  const importedEntries = await migrateLegacyEntriesIntoFile();
+  const importedEntries = normalizeEntries(await migrateLegacyEntriesIntoFile());
   const verifier = await encryptText(key, "vault-check");
   const vault = await encryptText(key, JSON.stringify(importedEntries));
 
@@ -315,6 +335,7 @@ async function createVaultFile(masterPassword) {
   await writeVaultFile(payload);
   sessionKey = key;
   entries = importedEntries;
+  resetAutoLockTimer();
 }
 
 async function unlockVault(masterPassword) {
@@ -335,7 +356,8 @@ async function unlockVault(masterPassword) {
 
   const decryptedVault = await decryptText(key, vaultMetadata.vault);
   sessionKey = key;
-  entries = JSON.parse(decryptedVault);
+  entries = normalizeEntries(JSON.parse(decryptedVault));
+  resetAutoLockTimer();
 }
 
 async function persistVault() {
@@ -351,6 +373,7 @@ async function persistVault() {
 function lockVault() {
   sessionKey = null;
   entries = [];
+  stopAutoLockTimer();
   resetForm();
   unlockForm.reset();
   searchInput.value = "";
@@ -374,6 +397,73 @@ function showApp() {
   appShell.classList.remove("app-hidden");
   appShell.setAttribute("aria-hidden", "false");
   updateSelectedFileUi();
+  resetAutoLockTimer();
+}
+
+function getAutoLockMinutes() {
+  return Number(autoLockSelect.value);
+}
+
+function hideAutoLockWarning() {
+  autoLockWarning.classList.add("hidden");
+}
+
+function showAutoLockWarning(secondsRemaining) {
+  autoLockWarning.querySelector(".auto-lock-warning-text").textContent = `Vault will auto-lock in ${secondsRemaining} second${secondsRemaining === 1 ? "" : "s"}.`;
+  autoLockWarning.classList.remove("hidden");
+}
+
+function stopAutoLockTimer() {
+  clearTimeout(autoLockTimer);
+  autoLockTimer = null;
+  clearInterval(autoLockWarningTimer);
+  autoLockWarningTimer = null;
+  hideAutoLockWarning();
+}
+
+function resetAutoLockTimer() {
+  stopAutoLockTimer();
+
+  if (!sessionKey) {
+    return;
+  }
+
+  const minutes = getAutoLockMinutes();
+  if (minutes <= 0) {
+    return;
+  }
+
+  const totalMs = minutes * 60 * 1000;
+  const warningDelay = totalMs - AUTO_LOCK_WARNING_MS;
+
+  if (warningDelay > 0) {
+    autoLockWarningTimer = setTimeout(() => {
+      let secondsRemaining = Math.ceil(AUTO_LOCK_WARNING_MS / 1000);
+      showAutoLockWarning(secondsRemaining);
+
+      autoLockWarningTimer = setInterval(() => {
+        secondsRemaining -= 1;
+        if (secondsRemaining > 0) {
+          showAutoLockWarning(secondsRemaining);
+        }
+      }, 1000);
+    }, warningDelay);
+  }
+
+  autoLockTimer = setTimeout(() => {
+    lockVault();
+    showToast("Vault auto-locked after inactivity.");
+  }, totalMs);
+}
+
+function registerActivityTracking() {
+  ACTIVITY_EVENTS.forEach((eventName) => {
+    document.addEventListener(eventName, () => {
+      if (sessionKey) {
+        resetAutoLockTimer();
+      }
+    });
+  });
 }
 
 function generatePassword() {
@@ -433,10 +523,18 @@ function getStrengthLabel(password) {
 
 function renderEntries() {
   const query = searchInput.value.trim().toLowerCase();
-  const filteredEntries = entries.filter((entry) => {
-    const combinedText = `${entry.site} ${entry.account} ${entry.notes}`.toLowerCase();
-    return combinedText.includes(query);
-  });
+  const filteredEntries = entries
+    .filter((entry) => {
+      const combinedText = `${entry.site} ${entry.account} ${entry.notes}`.toLowerCase();
+      return combinedText.includes(query);
+    })
+    .sort((left, right) => {
+      if (left.pinned !== right.pinned) {
+        return Number(right.pinned) - Number(left.pinned);
+      }
+
+      return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+    });
 
   entryCount.textContent = String(entries.length);
 
@@ -457,16 +555,23 @@ function renderEntries() {
         <article class="entry-card">
           <div class="entry-header">
             <div>
-              <h3>${escapeHtml(entry.site)}</h3>
+              <div class="entry-title-row">
+                <h3>${escapeHtml(entry.site)}</h3>
+                ${entry.pinned ? '<span class="pin-badge">Pinned</span>' : ""}
+              </div>
               <p class="entry-date">Saved ${new Date(entry.updatedAt).toLocaleString()}</p>
             </div>
             <div class="entry-actions">
+              <button type="button" class="inline-button" data-action="pin" data-id="${entry.id}">${entry.pinned ? "Unpin" : "Pin"}</button>
               <button type="button" class="inline-button" data-action="edit" data-id="${entry.id}">Edit</button>
               <button type="button" class="inline-button danger" data-action="delete" data-id="${entry.id}">Delete</button>
             </div>
           </div>
           <div class="entry-meta">
             <p>${escapeHtml(entry.account)}</p>
+            <div class="entry-actions">
+              <button type="button" class="inline-button" data-action="copy-account" data-id="${entry.id}">Copy Username</button>
+            </div>
           </div>
           <div class="password-row">
             <p class="entry-password" id="password-${entry.id}">${maskedPassword}</p>
@@ -491,6 +596,7 @@ async function upsertEntry(event) {
     account: accountNameInput.value.trim(),
     password: passwordValueInput.value,
     notes: notesInput.value.trim(),
+    pinned: false,
     updatedAt: new Date().toISOString(),
   };
 
@@ -502,6 +608,7 @@ async function upsertEntry(event) {
   const existingIndex = entries.findIndex((savedEntry) => savedEntry.id === entry.id);
 
   if (existingIndex >= 0) {
+    entry.pinned = entries[existingIndex].pinned;
     entries[existingIndex] = entry;
     showToast("Password updated.");
   } else {
@@ -541,6 +648,18 @@ async function deleteEntry(id) {
   showToast("Password deleted.");
 }
 
+async function togglePinned(id) {
+  entries = entries.map((entry) => (
+    entry.id === id
+      ? { ...entry, pinned: !entry.pinned, updatedAt: new Date().toISOString() }
+      : entry
+  ));
+
+  await persistVault();
+  renderEntries();
+  showToast("Pinned status updated.");
+}
+
 function handleEntryAction(event) {
   const button = event.target.closest("button[data-action]");
   if (!button) return;
@@ -550,12 +669,19 @@ function handleEntryAction(event) {
   if (!entry) return;
 
   if (action === "edit") startEdit(id);
+  if (action === "pin") {
+    togglePinned(id).catch((error) => {
+      console.error(error);
+      showToast("Could not update the vault file.");
+    });
+  }
   if (action === "delete") {
     deleteEntry(id).catch((error) => {
       console.error(error);
       showToast("Could not update the vault file.");
     });
   }
+  if (action === "copy-account") copyText(entry.account, "Username or email copied.");
   if (action === "copy") copyText(entry.password, "Password copied.");
   if (action === "reveal") {
     const passwordNode = document.getElementById(`password-${id}`);
@@ -617,6 +743,254 @@ function escapeHtml(text) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function parseCsvLine(line) {
+  const values = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    const nextCharacter = line[index + 1];
+
+    if (character === '"') {
+      if (inQuotes && nextCharacter === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (character === "," && !inQuotes) {
+      values.push(current);
+      current = "";
+      continue;
+    }
+
+    current += character;
+  }
+
+  values.push(current);
+  return values.map((value) => value.trim());
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    const nextCharacter = text[index + 1];
+
+    if (character === '"') {
+      current += character;
+      if (inQuotes && nextCharacter === '"') {
+        current += nextCharacter;
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if ((character === "\n" || character === "\r") && !inQuotes) {
+      if (character === "\r" && nextCharacter === "\n") {
+        index += 1;
+      }
+
+      if (current.trim()) {
+        rows.push(parseCsvLine(current));
+      }
+
+      current = "";
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (current.trim()) {
+    rows.push(parseCsvLine(current));
+  }
+
+  return rows;
+}
+
+function findColumnIndex(headers, candidates) {
+  const normalizedHeaders = headers.map((header) => header.trim().toLowerCase());
+  return normalizedHeaders.findIndex((header) => candidates.includes(header));
+}
+
+function getGooglePasswordRows(csvText) {
+  const rows = parseCsv(csvText);
+  if (rows.length < 2) {
+    return [];
+  }
+
+  const headers = rows[0];
+  const websiteIndex = findColumnIndex(headers, ["name", "website", "origin", "url"]);
+  const urlIndex = findColumnIndex(headers, ["url", "website", "origin"]);
+  const usernameIndex = findColumnIndex(headers, ["username", "user name", "email"]);
+  const passwordIndex = findColumnIndex(headers, ["password"]);
+  const noteIndex = findColumnIndex(headers, ["note", "notes"]);
+
+  if (usernameIndex < 0 || passwordIndex < 0 || (websiteIndex < 0 && urlIndex < 0)) {
+    throw new Error("Unsupported Google Password Manager CSV format.");
+  }
+
+  return rows.slice(1).map((row) => ({
+    site: row[websiteIndex] || row[urlIndex] || "",
+    account: row[usernameIndex] || "",
+    password: row[passwordIndex] || "",
+    notes: noteIndex >= 0 ? row[noteIndex] || "" : "",
+    url: urlIndex >= 0 ? row[urlIndex] || "" : "",
+  }));
+}
+
+function createImportedEntry(importedRow) {
+  const siteLabel = importedRow.site || importedRow.url || "Imported Login";
+  const noteParts = [];
+
+  if (importedRow.notes) {
+    noteParts.push(importedRow.notes);
+  }
+
+  if (importedRow.url && importedRow.url !== importedRow.site) {
+    noteParts.push(`Source URL: ${importedRow.url}`);
+  }
+
+  return {
+    id: `import-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    site: siteLabel,
+    account: importedRow.account,
+    password: importedRow.password,
+    notes: noteParts.join("\n"),
+    pinned: false,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function isDuplicateEntry(candidate) {
+  return entries.some((entry) => (
+    entry.site === candidate.site &&
+    entry.account === candidate.account &&
+    entry.password === candidate.password
+  ));
+}
+
+async function importGooglePasswords(file) {
+  if (!sessionKey || !vaultTarget) {
+    showToast("Unlock your vault before importing Google passwords.");
+    return;
+  }
+
+  if (!file) {
+    return;
+  }
+
+  try {
+    const csvText = await file.text();
+    const importedRows = getGooglePasswordRows(csvText);
+
+    if (!importedRows.length) {
+      showToast("No passwords were found in that Google export.");
+      return;
+    }
+
+    const newEntries = importedRows
+      .filter((row) => row.account && row.password && (row.site || row.url))
+      .map(createImportedEntry)
+      .filter((entry) => !isDuplicateEntry(entry));
+
+    if (!newEntries.length) {
+      showToast("All imported Google passwords already exist in your vault.");
+      return;
+    }
+
+    entries = [...newEntries, ...entries];
+    await persistVault();
+    renderEntries();
+    showToast(`Imported ${newEntries.length} Google password${newEntries.length === 1 ? "" : "s"}.`);
+  } catch (error) {
+    console.error(error);
+    showToast("Could not import the Google Password Manager CSV.");
+  } finally {
+    importGoogleInput.value = "";
+  }
+}
+
+async function exportBackup() {
+  if (!vaultMetadata) {
+    showToast("Unlock a vault before exporting a backup.");
+    return;
+  }
+
+  const backupContents = JSON.stringify(vaultMetadata, null, 2);
+  const backupName = `${(vaultTarget?.name || "password-manager").replace(/\.vault$/i, "")}-backup.vault`;
+
+  if (window.desktopAPI) {
+    const result = await window.desktopAPI.saveVaultFile(backupName);
+    if (result?.canceled || !result?.filePath) {
+      return;
+    }
+
+    await window.desktopAPI.writeVaultFile(result.filePath, backupContents);
+  } else {
+    const blob = new Blob([backupContents], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = backupName;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  showToast("Encrypted backup exported.");
+}
+
+async function importBackupFile(file) {
+  if (!sessionKey || !vaultTarget) {
+    showToast("Unlock your vault before importing a backup.");
+    return;
+  }
+
+  if (!file) {
+    return;
+  }
+
+  try {
+    const raw = await file.text();
+    const parsed = JSON.parse(raw);
+
+    if (!parsed?.salt || !parsed?.vault || !parsed?.verifier) {
+      throw new Error("Invalid backup file.");
+    }
+
+    const verifier = await decryptText(sessionKey, parsed.verifier);
+    if (verifier !== "vault-check") {
+      throw new Error("Backup uses a different master password.");
+    }
+
+    const decryptedVault = await decryptText(sessionKey, parsed.vault);
+    entries = normalizeEntries(JSON.parse(decryptedVault));
+    vaultMetadata = {
+      ...parsed,
+      updatedAt: new Date().toISOString(),
+    };
+    await writeVaultFile(vaultMetadata);
+    renderEntries();
+    resetForm();
+    showToast("Backup imported into the current vault.");
+  } catch (error) {
+    console.error(error);
+    showToast("Could not import that backup file.");
+  } finally {
+    importBackupInput.value = "";
+  }
 }
 
 async function handleSetup(event) {
@@ -682,6 +1056,11 @@ function initializeApp() {
     migrationNote.classList.remove("hidden");
   }
 
+  const savedAutoLockMinutes = localStorage.getItem(AUTO_LOCK_STORAGE_KEY);
+  if (savedAutoLockMinutes !== null) {
+    autoLockSelect.value = savedAutoLockMinutes;
+  }
+
   showAuthHome();
   lengthValue.textContent = lengthRange.value;
   generatePassword();
@@ -691,6 +1070,15 @@ function initializeApp() {
 lengthRange.addEventListener("input", () => {
   lengthValue.textContent = lengthRange.value;
 });
+
+autoLockSelect.addEventListener("change", () => {
+  localStorage.setItem(AUTO_LOCK_STORAGE_KEY, autoLockSelect.value);
+  resetAutoLockTimer();
+  const minutes = getAutoLockMinutes();
+  showToast(minutes > 0 ? `Auto-lock set to ${minutes} minute${minutes === 1 ? "" : "s"}.` : "Auto-lock disabled.");
+});
+
+registerActivityTracking();
 
 createVaultFileBtn.addEventListener("click", () => {
   pickNewVaultFile().catch((error) => {
@@ -752,5 +1140,29 @@ unlockForm.addEventListener("submit", (event) => {
   handleUnlock(event);
 });
 lockVaultBtn.addEventListener("click", lockVault);
+importGoogleBtn.addEventListener("click", () => {
+  importGoogleInput.click();
+});
+exportBackupBtn.addEventListener("click", () => {
+  exportBackup().catch((error) => {
+    console.error(error);
+    showToast("Could not export the backup.");
+  });
+});
+importBackupBtn.addEventListener("click", () => {
+  importBackupInput.click();
+});
+importBackupInput.addEventListener("change", (event) => {
+  const [file] = event.target.files || [];
+  importBackupFile(file);
+});
+importGoogleInput.addEventListener("change", (event) => {
+  const [file] = event.target.files || [];
+  importGooglePasswords(file);
+});
+stayUnlockedBtn.addEventListener("click", () => {
+  resetAutoLockTimer();
+  showToast("Auto-lock timer reset.");
+});
 
 initializeApp();
