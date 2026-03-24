@@ -16,7 +16,7 @@
       <h1 id="authTitle">Choose your vault file</h1>
       <p id="authDescription" class="auth-copy">Create a permanent encrypted vault file on disk, then place it in OneDrive, Google Drive, Dropbox, or another sync folder for cross-device access.</p>
 
-      <div class="auth-action-grid">
+      <div id="authActionGrid" class="auth-action-grid">
         <button type="button" class="primary-button" id="createVaultFileBtn">Create New Vault File</button>
         <button type="button" class="secondary-button" id="openVaultFileBtn">Open Existing Vault File</button>
       </div>
@@ -223,7 +223,6 @@
 
   <div id="autoLockWarning" class="auto-lock-warning hidden" aria-live="polite">
     <p class="auto-lock-warning-text">Vault will lock soon.</p>
-    <button type="button" class="ghost-button" id="stayUnlockedBtn">Stay Unlocked</button>
   </div>
 
   <div id="toast" class="toast" aria-live="polite"></div>

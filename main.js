@@ -160,6 +160,7 @@ function createWindow() {
     height: 940,
     minWidth: 1100,
     minHeight: 760,
+    show: false,
     backgroundColor: "#f4ebdf",
     autoHideMenuBar: true,
     icon: path.join(__dirname, "build", "icon.png"),
@@ -172,6 +173,10 @@ function createWindow() {
   });
 
   window.loadFile(path.join(__dirname, "index.html"));
+  window.once("ready-to-show", () => {
+    window.maximize();
+    window.show();
+  });
   window.webContents.on("did-finish-load", () => {
     sendUpdateStatus(updateState);
     if (app.isPackaged) {

@@ -2,6 +2,7 @@ const LEGACY_STORAGE_KEY = "vault-password-manager-entries";
 const ITERATIONS = 250000;
 const AUTO_LOCK_STORAGE_KEY = "password-manager-auto-lock-minutes";
 const AUTO_LOCK_WARNING_MS = 30000;
+const LAST_VAULT_TARGET_KEY = "password-manager-last-vault-target";
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
@@ -9,6 +10,7 @@ const authOverlay = document.getElementById("authOverlay");
 const appShell = document.getElementById("appShell");
 const authTitle = document.getElementById("authTitle");
 const authDescription = document.getElementById("authDescription");
+const authActionGrid = document.getElementById("authActionGrid");
 const migrationNote = document.getElementById("migrationNote");
 const fileSupportWarning = document.getElementById("fileSupportWarning");
 const selectedFileCard = document.getElementById("selectedFileCard");
@@ -29,7 +31,6 @@ const importBackupInput = document.getElementById("importBackupInput");
 const importGoogleInput = document.getElementById("importGoogleInput");
 const autoLockSelect = document.getElementById("autoLockSelect");
 const autoLockWarning = document.getElementById("autoLockWarning");
-const stayUnlockedBtn = document.getElementById("stayUnlockedBtn");
 const updateStatusText = document.getElementById("updateStatusText");
 const updateActionBtn = document.getElementById("updateActionBtn");
 
@@ -99,6 +100,36 @@ function supportsVaultFiles() {
       (window.showOpenFilePicker && window.showSaveFilePicker)
     ),
   );
+}
+
+function persistVaultTarget() {
+  if (!window.desktopAPI || !vaultTarget?.filePath) {
+    return;
+  }
+
+  localStorage.setItem(LAST_VAULT_TARGET_KEY, JSON.stringify({
+    type: vaultTarget.type,
+    filePath: vaultTarget.filePath,
+    name: vaultTarget.name,
+  }));
+}
+
+function clearPersistedVaultTarget() {
+  localStorage.removeItem(LAST_VAULT_TARGET_KEY);
+}
+
+function loadPersistedVaultTarget() {
+  if (!window.desktopAPI) {
+    return null;
+  }
+
+  try {
+    const raw = localStorage.getItem(LAST_VAULT_TARGET_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    console.error("Failed to load saved vault target", error);
+    return null;
+  }
 }
 
 function randomBytes(length) {
@@ -195,6 +226,31 @@ function updateSelectedFileUi() {
   activeVaultName.textContent = vaultTarget.name;
 }
 
+function getRememberedVaultTarget() {
+  return vaultTarget || loadPersistedVaultTarget();
+}
+
+function showUnlockForCurrentVault() {
+  if (!vaultTarget) {
+    vaultTarget = loadPersistedVaultTarget();
+  }
+
+  if (!vaultTarget) {
+    showAuthHome();
+    return;
+  }
+
+  authOverlay.classList.remove("hidden");
+  appShell.classList.add("app-hidden");
+  appShell.setAttribute("aria-hidden", "true");
+  authActionGrid.classList.add("hidden");
+  setupForm.classList.add("hidden");
+  unlockForm.classList.remove("hidden");
+  updateSelectedFileUi();
+  authTitle.textContent = "Unlock your vault";
+  authDescription.textContent = "Enter your master password to unlock the same encrypted vault file you used last time.";
+}
+
 async function pickNewVaultFile() {
   if (window.desktopAPI) {
     const result = await window.desktopAPI.saveVaultFile("password-manager.vault");
@@ -222,6 +278,7 @@ async function pickNewVaultFile() {
 
   vaultMetadata = null;
   updateSelectedFileUi();
+  authActionGrid.classList.add("hidden");
   setupForm.classList.remove("hidden");
   unlockForm.classList.add("hidden");
   authTitle.textContent = "Create your encrypted vault";
@@ -253,16 +310,16 @@ async function pickExistingVaultFile() {
 
   try {
     vaultMetadata = await readVaultFile();
-    setupForm.classList.add("hidden");
-    unlockForm.classList.remove("hidden");
-    authTitle.textContent = "Unlock your vault";
-    authDescription.textContent = "Enter your master password to decrypt this vault file.";
+    persistVaultTarget();
+    showUnlockForCurrentVault();
   } catch (error) {
     console.error(error);
     showToast("That file is not a valid vault file.");
     vaultTarget = null;
     vaultMetadata = null;
+    clearPersistedVaultTarget();
     updateSelectedFileUi();
+    authActionGrid.classList.remove("hidden");
   }
 }
 
@@ -341,6 +398,7 @@ async function createVaultFile(masterPassword) {
   await writeVaultFile(payload);
   sessionKey = key;
   entries = importedEntries;
+  persistVaultTarget();
   resetAutoLockTimer();
 }
 
@@ -377,14 +435,21 @@ async function persistVault() {
 }
 
 function lockVault() {
+  const rememberedVaultTarget = getRememberedVaultTarget();
   sessionKey = null;
   entries = [];
+  vaultMetadata = null;
   stopAutoLockTimer();
   resetForm();
   unlockForm.reset();
   searchInput.value = "";
   renderEntries();
-  showAuthHome();
+  vaultTarget = rememberedVaultTarget;
+  if (vaultTarget) {
+    showUnlockForCurrentVault();
+  } else {
+    showAuthHome();
+  }
   showToast("Vault locked.");
 }
 
@@ -392,10 +457,14 @@ function showAuthHome() {
   authOverlay.classList.remove("hidden");
   appShell.classList.add("app-hidden");
   appShell.setAttribute("aria-hidden", "true");
+  authActionGrid.classList.remove("hidden");
   setupForm.classList.add("hidden");
   unlockForm.classList.add("hidden");
   authTitle.textContent = "Choose your vault file";
   authDescription.textContent = "Create a permanent encrypted vault file on disk, then place it in OneDrive, Google Drive, Dropbox, or another sync folder for cross-device access.";
+  if (!vaultTarget) {
+    updateSelectedFileUi();
+  }
 }
 
 function showApp() {
@@ -415,7 +484,7 @@ function hideAutoLockWarning() {
 }
 
 function showAutoLockWarning(secondsRemaining) {
-  autoLockWarning.querySelector(".auto-lock-warning-text").textContent = `Vault will auto-lock in ${secondsRemaining} second${secondsRemaining === 1 ? "" : "s"}.`;
+  autoLockWarning.querySelector(".auto-lock-warning-text").textContent = `Vault will auto-lock in ${secondsRemaining} second${secondsRemaining === 1 ? "" : "s"} unless you use the app.`;
   autoLockWarning.classList.remove("hidden");
 }
 
@@ -513,6 +582,25 @@ function randomIndex(max) {
   return values[0] % max;
 }
 
+function getSearchScore(entry, query) {
+  if (!query) {
+    return 0;
+  }
+
+  const site = (entry.site || "").toLowerCase();
+  const notes = (entry.notes || "").toLowerCase();
+
+  if (site.includes(query)) {
+    return 2;
+  }
+
+  if (notes.includes(query)) {
+    return 1;
+  }
+
+  return -1;
+}
+
 function getStrengthLabel(password) {
   let score = 0;
 
@@ -530,16 +618,21 @@ function getStrengthLabel(password) {
 function renderEntries() {
   const query = searchInput.value.trim().toLowerCase();
   const filteredEntries = entries
-    .filter((entry) => {
-      const combinedText = `${entry.site} ${entry.account} ${entry.notes}`.toLowerCase();
-      return combinedText.includes(query);
-    })
+    .map((entry) => ({
+      entry,
+      searchScore: getSearchScore(entry, query),
+    }))
+    .filter(({ searchScore }) => searchScore >= 0)
     .sort((left, right) => {
-      if (left.pinned !== right.pinned) {
-        return Number(right.pinned) - Number(left.pinned);
+      if (left.entry.pinned !== right.entry.pinned) {
+        return Number(right.entry.pinned) - Number(left.entry.pinned);
       }
 
-      return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+      if (left.searchScore !== right.searchScore) {
+        return right.searchScore - left.searchScore;
+      }
+
+      return new Date(right.entry.updatedAt).getTime() - new Date(left.entry.updatedAt).getTime();
     });
 
   entryCount.textContent = String(entries.length);
@@ -555,7 +648,7 @@ function renderEntries() {
   }
 
   entryList.innerHTML = filteredEntries
-    .map((entry) => {
+    .map(({ entry }) => {
       const maskedPassword = "\u2022".repeat(Math.max(entry.password.length, 8));
       return `
         <article class="entry-card">
@@ -1100,6 +1193,25 @@ function initializeApp() {
   }
 
   showAuthHome();
+  const savedVaultTarget = loadPersistedVaultTarget();
+  if (savedVaultTarget?.filePath) {
+    vaultTarget = savedVaultTarget;
+    updateSelectedFileUi();
+    readVaultFile()
+      .then((metadata) => {
+        vaultMetadata = metadata;
+        showUnlockForCurrentVault();
+      })
+      .catch((error) => {
+        console.error(error);
+        vaultTarget = null;
+        vaultMetadata = null;
+        clearPersistedVaultTarget();
+        updateSelectedFileUi();
+        showAuthHome();
+      });
+  }
+
   lengthValue.textContent = lengthRange.value;
   generatePassword();
   renderEntries();
@@ -1205,10 +1317,6 @@ importBackupInput.addEventListener("change", (event) => {
 importGoogleInput.addEventListener("change", (event) => {
   const [file] = event.target.files || [];
   importGooglePasswords(file);
-});
-stayUnlockedBtn.addEventListener("click", () => {
-  resetAutoLockTimer();
-  showToast("Auto-lock timer reset.");
 });
 updateActionBtn.addEventListener("click", () => {
   if (!window.desktopAPI) {
