@@ -253,7 +253,7 @@ function showUnlockForCurrentVault() {
 
 async function pickNewVaultFile() {
   if (window.desktopAPI) {
-    const result = await window.desktopAPI.saveVaultFile("password-manager.vault");
+    const result = await window.desktopAPI.saveVaultFile("pocketvault.vault");
     if (result?.canceled || !result?.filePath) {
       return;
     }
@@ -266,7 +266,7 @@ async function pickNewVaultFile() {
   } else {
     const handle = await window.showSaveFilePicker({
       ...getVaultFileOptions(),
-      suggestedName: "password-manager.vault",
+      suggestedName: "pocketvault.vault",
     });
 
     vaultTarget = {
@@ -1059,7 +1059,7 @@ async function exportBackup() {
   }
 
   const backupContents = JSON.stringify(vaultMetadata, null, 2);
-  const backupName = `${(vaultTarget?.name || "password-manager").replace(/\.vault$/i, "")}-backup.vault`;
+  const backupName = `${(vaultTarget?.name || "pocketvault").replace(/\.vault$/i, "")}-backup.vault`;
 
   if (window.desktopAPI) {
     const result = await window.desktopAPI.saveVaultFile(backupName);

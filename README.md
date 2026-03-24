@@ -1,6 +1,6 @@
-# Password Manager
+# PocketVault
 
-Desktop password manager built with Electron and a file-based encrypted vault.
+PocketVault is a desktop password manager built with Electron and a file-based encrypted vault.
 
 This app lets you:
 - generate strong random passwords

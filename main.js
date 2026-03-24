@@ -73,7 +73,7 @@ function configureAutoUpdater() {
   });
 }
 
-ipcMain.handle("vault:save", async (_event, suggestedName = "password-manager.vault") => {
+ipcMain.handle("vault:save", async (_event, suggestedName = "pocketvault.vault") => {
   const result = await dialog.showSaveDialog({
     title: "Create Vault File",
     defaultPath: suggestedName,
