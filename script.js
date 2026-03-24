@@ -660,26 +660,22 @@ function renderEntries() {
               </div>
               <p class="entry-date">Saved ${new Date(entry.updatedAt).toLocaleString()}</p>
             </div>
-            <div class="entry-actions">
-              <button type="button" class="inline-button" data-action="pin" data-id="${entry.id}">${entry.pinned ? "Unpin" : "Pin"}</button>
-              <button type="button" class="inline-button" data-action="edit" data-id="${entry.id}">Edit</button>
-              <button type="button" class="inline-button danger" data-action="delete" data-id="${entry.id}">Delete</button>
-            </div>
           </div>
           <div class="entry-meta">
             <p>${escapeHtml(entry.account)}</p>
-            <div class="entry-actions">
-              <button type="button" class="inline-button" data-action="copy-account" data-id="${entry.id}">Copy Username</button>
-            </div>
           </div>
           <div class="password-row">
             <p class="entry-password" id="password-${entry.id}">${maskedPassword}</p>
-            <div class="entry-actions">
-              <button type="button" class="inline-button" data-action="reveal" data-id="${entry.id}">Reveal</button>
-              <button type="button" class="inline-button" data-action="copy" data-id="${entry.id}">Copy</button>
-            </div>
           </div>
           ${entry.notes ? `<p class="entry-notes">${escapeHtml(entry.notes)}</p>` : ""}
+          <div class="entry-toolbar">
+            <button type="button" class="inline-button" data-action="pin" data-id="${entry.id}">${entry.pinned ? "Unpin" : "Pin"}</button>
+            <button type="button" class="inline-button" data-action="edit" data-id="${entry.id}">Edit</button>
+            <button type="button" class="inline-button danger" data-action="delete" data-id="${entry.id}">Delete</button>
+            <button type="button" class="inline-button" data-action="copy-account" data-id="${entry.id}">Copy Username</button>
+            <button type="button" class="inline-button" data-action="reveal" data-id="${entry.id}">Reveal</button>
+            <button type="button" class="inline-button" data-action="copy" data-id="${entry.id}">Copy Password</button>
+          </div>
         </article>
       `;
     })
