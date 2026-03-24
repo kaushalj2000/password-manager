@@ -1,7 +1,7 @@
 const LEGACY_STORAGE_KEY = "vault-password-manager-entries";
 const ITERATIONS = 250000;
 const AUTO_LOCK_STORAGE_KEY = "password-manager-auto-lock-minutes";
-const AUTO_LOCK_WARNING_MS = 15000;
+const AUTO_LOCK_WARNING_MS = 30000;
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
@@ -1095,6 +1095,8 @@ function initializeApp() {
   const savedAutoLockMinutes = localStorage.getItem(AUTO_LOCK_STORAGE_KEY);
   if (savedAutoLockMinutes !== null) {
     autoLockSelect.value = savedAutoLockMinutes;
+  } else {
+    autoLockSelect.value = "3";
   }
 
   showAuthHome();

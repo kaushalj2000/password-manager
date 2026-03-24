@@ -485,8 +485,22 @@ textarea {
   z-index: 20;
 }
 
+.auto-lock-warning.hidden {
+  display: none;
+}
+
 .auto-lock-warning-text {
   margin: 0;
+}
+
+#stayUnlockedBtn {
+  background: rgba(217, 178, 111, 0.18);
+  color: #f7c98a;
+  border: 1px solid rgba(217, 178, 111, 0.22);
+}
+
+#stayUnlockedBtn:hover {
+  background: rgba(217, 178, 111, 0.28);
 }
 
 @media (max-width: 980px) {
