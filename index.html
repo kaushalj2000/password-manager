@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="authOverlay" class="auth-overlay">
+    <section class="auth-card">
+      <p class="eyebrow">Encrypted Vault File</p>
+      <h1 id="authTitle">Choose your vault file</h1>
+      <p id="authDescription" class="auth-copy">Create a permanent encrypted vault file on disk, then place it in OneDrive, Google Drive, Dropbox, or another sync folder for cross-device access.</p>
+
+      <div class="auth-action-grid">
+        <button type="button" class="primary-button" id="createVaultFileBtn">Create New Vault File</button>
+        <button type="button" class="secondary-button" id="openVaultFileBtn">Open Existing Vault File</button>
+      </div>
+
+      <div id="selectedFileCard" class="selected-file-card hidden">
+        <p class="selected-file-label">Selected Vault File</p>
+        <p id="selectedFileName" class="selected-file-name">No file selected</p>
+      </div>
+
+      <div id="migrationNote" class="migration-note hidden">
+        Existing browser-stored entries were found. They can be imported into your new encrypted vault file after you create it.
+      </div>
+
+      <div id="fileSupportWarning" class="crypto-warning hidden">
+        This browser does not support the File System Access API required for permanent vault files. Use a current version of Chrome or Edge.
+      </div>
+
+      <form id="setupForm" class="auth-form hidden">
+        <label class="field-group">
+          <span class="field-label">Master Password</span>
+          <input id="setupPassword" type="password" placeholder="Create a strong master password" minlength="8" required>
+        </label>
+
+        <label class="field-group">
+          <span class="field-label">Confirm Master Password</span>
+          <input id="confirmPassword" type="password" placeholder="Re-enter your master password" minlength="8" required>
+        </label>
+
+        <button type="submit" class="primary-button">Create Encrypted Vault</button>
+      </form>
+
+      <form id="unlockForm" class="auth-form hidden">
+        <label class="field-group">
+          <span class="field-label">Master Password</span>
+          <input id="unlockPassword" type="password" placeholder="Enter your master password" required>
+        </label>
+
+        <button type="submit" class="primary-button">Unlock Vault</button>
+      </form>
+    </section>
+  </div>
+
+  <div id="appShell" class="app-shell app-hidden" aria-hidden="true">
+    <aside class="sidebar">
+      <div class="brand-block">
+        <p class="eyebrow">Vault Workspace</p>
+        <h1>Password Manager</h1>
+        <p class="sidebar-copy">Generate strong passwords, save new logins, and keep your existing passwords organized in one encrypted file.</p>
+      </div>
+
+      <div class="summary-card">
+        <p class="summary-label">Stored Entries</p>
+        <p class="summary-value" id="entryCount">0</p>
+        <p class="summary-copy">Encrypted inside your vault file. Put that file in a sync folder to use it across devices.</p>
+      </div>
+
+      <div class="tips-card">
+        <p class="tips-title">Current Vault File</p>
+        <p id="activeVaultName" class="tips-copy">No file opened</p>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <section class="panel topbar-panel">
+        <div class="topbar-row">
+          <div>
+            <p class="eyebrow">Vault Status</p>
+            <h2>Unlocked session</h2>
+          </div>
+          <button type="button" class="secondary-button" id="lockVaultBtn">Lock Vault</button>
+        </div>
+      </section>
+
+      <section class="panel generator-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Generator</p>
+            <h2>Create a strong password</h2>
+          </div>
+          <button type="button" class="secondary-button" id="generateBtn">Generate</button>
+        </div>
+
+        <div class="generated-password-card">
+          <label class="field-label" for="generatedPassword">Generated Password</label>
+          <div class="password-output-row">
+            <input id="generatedPassword" class="password-output" type="text" readonly>
+            <button type="button" class="ghost-button" id="copyGeneratedBtn">Copy</button>
+            <button type="button" class="ghost-button" id="useGeneratedBtn">Use</button>
+          </div>
+          <p class="strength-text" id="strengthText">Strength: Ready to generate</p>
+        </div>
+
+        <div class="generator-grid">
+          <label class="range-block">
+            <span class="field-label">Password Length</span>
+            <div class="range-row">
+              <input id="lengthRange" type="range" min="8" max="40" value="18">
+              <span id="lengthValue">18</span>
+            </div>
+          </label>
+
+          <div class="toggle-grid">
+            <label class="toggle-option">
+              <input id="includeUppercase" type="checkbox" checked>
+              <span>Uppercase</span>
+            </label>
+            <label class="toggle-option">
+              <input id="includeLowercase" type="checkbox" checked>
+              <span>Lowercase</span>
+            </label>
+            <label class="toggle-option">
+              <input id="includeNumbers" type="checkbox" checked>
+              <span>Numbers</span>
+            </label>
+            <label class="toggle-option">
+              <input id="includeSymbols" type="checkbox" checked>
+              <span>Symbols</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel form-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Vault Entry</p>
+            <h2 id="formTitle">Save a password</h2>
+          </div>
+          <button type="button" class="secondary-button hidden" id="cancelEditBtn">Cancel Edit</button>
+        </div>
+
+        <form id="passwordForm" class="password-form">
+          <input id="entryId" type="hidden">
+
+          <label class="field-group">
+            <span class="field-label">Website or App</span>
+            <input id="siteName" type="text" placeholder="Example: Gmail" required>
+          </label>
+
+          <label class="field-group">
+            <span class="field-label">Username or Email</span>
+            <input id="accountName" type="text" placeholder="name@example.com" required>
+          </label>
+
+          <label class="field-group">
+            <span class="field-label">Password</span>
+            <div class="input-with-action">
+              <input id="passwordValue" type="password" placeholder="Type an existing password or use a generated one" required>
+              <button type="button" class="ghost-button" id="togglePasswordBtn">Show</button>
+            </div>
+          </label>
+
+          <label class="field-group">
+            <span class="field-label">Notes</span>
+            <textarea id="notes" rows="3" placeholder="Optional notes"></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button type="submit" class="primary-button" id="saveBtn">Save Password</button>
+            <button type="button" class="secondary-button" id="clearFormBtn">Clear</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel vault-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Saved Vault</p>
+            <h2>Your passwords</h2>
+          </div>
+        </div>
+
+        <label class="search-group" for="searchInput">
+          <span class="field-label">Search</span>
+          <input id="searchInput" type="text" placeholder="Search by website, username, or notes">
+        </label>
+
+        <div id="entryList" class="entry-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
