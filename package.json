@@ -1,6 +1,6 @@
 {
   "name": "password-manager-desktop",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Desktop password manager with an encrypted sync-friendly vault file.",
   "author": "OpenAI Codex",
   "main": "main.js",
@@ -19,6 +19,7 @@
   "build": {
     "appId": "com.codex.passwordmanager",
     "productName": "Password Manager",
+    "artifactName": "Password-Manager-Setup-${version}.${ext}",
     "files": [
       "index.html",
       "styles.css",
