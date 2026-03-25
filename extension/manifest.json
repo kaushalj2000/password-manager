@@ -5,6 +5,7 @@
   "description": "Connects to the PocketVault desktop app and autofills website logins.",
   "permissions": [
     "activeTab",
+    "scripting",
     "storage"
   ],
   "host_permissions": [

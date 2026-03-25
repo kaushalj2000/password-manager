@@ -53,6 +53,13 @@ h1 {
   line-height: 1.45;
 }
 
+.site-text {
+  margin-top: 8px;
+  color: var(--bronze-deep);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
 .field-group {
   display: grid;
   gap: 8px;
@@ -72,6 +79,27 @@ h1 {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.88);
   color: var(--ink);
+}
+
+.pairing-feedback {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(53, 94, 76, 0.1);
+  border: 1px solid rgba(53, 94, 76, 0.16);
+  color: var(--moss);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.pairing-feedback.error {
+  background: rgba(181, 65, 65, 0.08);
+  border-color: rgba(181, 65, 65, 0.2);
+  color: #9f2d2d;
+}
+
+.hidden {
+  display: none;
 }
 
 .primary-button,
