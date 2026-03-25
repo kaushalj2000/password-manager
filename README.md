@@ -7,6 +7,7 @@ This app lets you:
 - save new passwords
 - save existing passwords
 - store everything in an encrypted `.vault` file
+- autofill supported websites through a Chrome extension connected to the desktop app
 - import passwords from Google Password Manager CSV exports
 - export and import encrypted vault backups
 - pin important entries to the top
@@ -53,6 +54,25 @@ That means your passwords stay in a file you control, while still being usable a
 4. Click `Open Existing Vault File`.
 5. Select the same `.vault` file.
 6. Enter the same master password.
+
+### Browser Autofill Setup
+
+1. Open PocketVault on your desktop and unlock your vault.
+2. In Chrome, go to `chrome://extensions`.
+3. Turn on `Developer mode`.
+4. Click `Load unpacked`.
+5. Select the `extension` folder from this project.
+6. Open the `PocketVault Autofill` extension popup.
+7. In the PocketVault desktop app, copy the `Pairing Code` from the `Browser Autofill` card.
+8. Paste that code into the extension popup and click `Save Pairing Code`.
+9. Open a supported login page and use the extension popup to fill a matching login.
+
+### Browser Autofill Notes
+
+- The desktop app must be open and the vault must be unlocked.
+- The extension connects to PocketVault over `localhost` only.
+- If you rotate the pairing code in PocketVault, update it in the extension too.
+- This first version fills websites from the extension popup instead of auto-filling silently on every page.
 
 ### Important Tips
 

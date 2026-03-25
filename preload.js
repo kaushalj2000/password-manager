@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld("desktopAPI", {
   saveVaultFile: (suggestedName) => ipcRenderer.invoke("vault:save", suggestedName),
   readVaultFile: (filePath) => ipcRenderer.invoke("vault:read", filePath),
   writeVaultFile: (filePath, content) => ipcRenderer.invoke("vault:write", filePath, content),
+  getExtensionBridgeState: () => ipcRenderer.invoke("extension-bridge:get-state"),
+  updateExtensionBridgeState: (payload) => ipcRenderer.invoke("extension-bridge:update-state", payload),
   checkForUpdates: () => ipcRenderer.invoke("app:update-check"),
   downloadUpdate: () => ipcRenderer.invoke("app:update-download"),
   installUpdate: () => ipcRenderer.invoke("app:update-install"),

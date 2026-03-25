@@ -112,6 +112,24 @@ textarea {
   width: 100%;
 }
 
+.bridge-token {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(53, 94, 76, 0.08);
+  border: 1px solid rgba(53, 94, 76, 0.12);
+  font-family: "Roboto Mono", monospace;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.bridge-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
 .migration-note {
   background: rgba(217, 178, 111, 0.18);
   border: 1px solid rgba(166, 93, 55, 0.15);

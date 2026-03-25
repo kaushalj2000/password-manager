@@ -1,0 +1,149 @@
+:root {
+  --sand: #f5efe6;
+  --paper: #fffaf2;
+  --ink: #1f2937;
+  --muted: #5b6474;
+  --bronze: #a65d37;
+  --bronze-deep: #814624;
+  --moss: #355e4c;
+  --line: rgba(95, 76, 58, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  width: 360px;
+  min-height: 440px;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, rgba(217, 178, 111, 0.2), transparent 28%),
+    linear-gradient(135deg, #f2e7d8 0%, #f8f3eb 54%, #efe3d1 100%);
+}
+
+.popup-shell {
+  padding: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--bronze);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+
+.status-text {
+  margin-top: 10px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.field-group {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.field-group span {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.field-group input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--ink);
+}
+
+.primary-button,
+.secondary-button,
+.fill-button {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.primary-button {
+  width: 100%;
+  margin-top: 12px;
+  background: linear-gradient(135deg, var(--bronze), var(--bronze-deep));
+  color: white;
+}
+
+.secondary-button,
+.fill-button {
+  background: rgba(53, 94, 76, 0.12);
+  color: var(--moss);
+}
+
+.results-block {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 250, 242, 0.78);
+  border: 1px solid var(--line);
+}
+
+.results-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.results-heading h2 {
+  font-size: 1rem;
+}
+
+.results-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.empty-text {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.entry-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(166, 93, 55, 0.12);
+}
+
+.entry-site {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.entry-account,
+.entry-notes {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}

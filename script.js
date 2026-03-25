@@ -33,6 +33,10 @@ const autoLockSelect = document.getElementById("autoLockSelect");
 const autoLockWarning = document.getElementById("autoLockWarning");
 const updateStatusText = document.getElementById("updateStatusText");
 const updateActionBtn = document.getElementById("updateActionBtn");
+const bridgeStatusText = document.getElementById("bridgeStatusText");
+const bridgeTokenValue = document.getElementById("bridgeTokenValue");
+const copyBridgeTokenBtn = document.getElementById("copyBridgeTokenBtn");
+const rotateBridgeTokenBtn = document.getElementById("rotateBridgeTokenBtn");
 
 const form = document.getElementById("passwordForm");
 const entryIdInput = document.getElementById("entryId");
@@ -71,6 +75,11 @@ let autoLockWarningTimer;
 let updateState = {
   status: "idle",
   message: "Auto-update status will appear here.",
+};
+let extensionBridgeState = {
+  port: 37654,
+  token: "",
+  unlocked: false,
 };
 const ACTIVITY_EVENTS = ["pointerdown", "keydown", "mousemove", "scroll", "touchstart"];
 
@@ -130,6 +139,82 @@ function loadPersistedVaultTarget() {
     console.error("Failed to load saved vault target", error);
     return null;
   }
+}
+
+function generatePairingToken() {
+  return bytesToBase64(randomBytes(18))
+    .replace(/[+/=]/g, "")
+    .slice(0, 24);
+}
+
+function getStoredBridgeToken() {
+  try {
+    return localStorage.getItem("pocketvault-extension-token") || "";
+  } catch (error) {
+    console.error("Failed to read extension token", error);
+    return "";
+  }
+}
+
+function setStoredBridgeToken(token) {
+  try {
+    localStorage.setItem("pocketvault-extension-token", token);
+  } catch (error) {
+    console.error("Failed to save extension token", error);
+  }
+}
+
+function ensureBridgeToken() {
+  let token = getStoredBridgeToken();
+  if (!token) {
+    token = generatePairingToken();
+    setStoredBridgeToken(token);
+  }
+
+  return token;
+}
+
+function renderExtensionBridgeState() {
+  const hasDesktopBridge = Boolean(window.desktopAPI);
+  const token = extensionBridgeState.token || ensureBridgeToken();
+  bridgeTokenValue.textContent = token || "Pairing code unavailable";
+
+  if (!hasDesktopBridge) {
+    bridgeStatusText.textContent = "Browser autofill bridge works in the desktop app only.";
+    return;
+  }
+
+  if (!extensionBridgeState.unlocked) {
+    bridgeStatusText.textContent = `Desktop bridge ready on localhost:${extensionBridgeState.port}. Unlock your vault before the extension can autofill.`;
+    return;
+  }
+
+  bridgeStatusText.textContent = `Desktop bridge is live on localhost:${extensionBridgeState.port}. The extension can now request matching logins.`;
+}
+
+async function syncExtensionBridgeState() {
+  if (!window.desktopAPI?.updateExtensionBridgeState) {
+    renderExtensionBridgeState();
+    return;
+  }
+
+  const token = ensureBridgeToken();
+  extensionBridgeState = await window.desktopAPI.updateExtensionBridgeState({
+    token,
+    unlocked: Boolean(sessionKey),
+    entries,
+    vaultName: vaultTarget?.name || "",
+    lastUpdatedAt: vaultMetadata?.updatedAt || null,
+  });
+  renderExtensionBridgeState();
+}
+
+async function rotateExtensionBridgeToken() {
+  const token = generatePairingToken();
+  setStoredBridgeToken(token);
+  extensionBridgeState.token = token;
+  await syncExtensionBridgeState();
+  showToast("New extension pairing code created.");
 }
 
 function randomBytes(length) {
@@ -432,6 +517,7 @@ async function persistVault() {
   vaultMetadata.vault = await encryptText(sessionKey, JSON.stringify(entries));
   vaultMetadata.updatedAt = new Date().toISOString();
   await writeVaultFile(vaultMetadata);
+  await syncExtensionBridgeState();
 }
 
 function lockVault() {
@@ -445,6 +531,9 @@ function lockVault() {
   searchInput.value = "";
   renderEntries();
   vaultTarget = rememberedVaultTarget;
+  syncExtensionBridgeState().catch((error) => {
+    console.error(error);
+  });
   if (vaultTarget) {
     showUnlockForCurrentVault();
   } else {
@@ -473,6 +562,9 @@ function showApp() {
   appShell.setAttribute("aria-hidden", "false");
   updateSelectedFileUi();
   resetAutoLockTimer();
+  syncExtensionBridgeState().catch((error) => {
+    console.error(error);
+  });
 }
 
 function getAutoLockMinutes() {
@@ -615,6 +707,14 @@ function getStrengthLabel(password) {
   return "Very Strong";
 }
 
+function confirmDeleteEntry(entry) {
+  return window.confirm(`Delete the saved password for ${entry.site}?\n\nThis cannot be undone.`);
+}
+
+function confirmUpdateEntry(entry) {
+  return window.confirm(`Save changes to the password for ${entry.site}?`);
+}
+
 function renderEntries() {
   const query = searchInput.value.trim().toLowerCase();
   const filteredEntries = entries
@@ -703,6 +803,11 @@ async function upsertEntry(event) {
   const existingIndex = entries.findIndex((savedEntry) => savedEntry.id === entry.id);
 
   if (existingIndex >= 0) {
+    if (!confirmUpdateEntry(entry)) {
+      showToast("Edit canceled.");
+      return;
+    }
+
     entry.pinned = entries[existingIndex].pinned;
     entries[existingIndex] = entry;
     showToast("Password updated.");
@@ -732,6 +837,14 @@ function startEdit(id) {
 }
 
 async function deleteEntry(id) {
+  const entry = entries.find((savedEntry) => savedEntry.id === id);
+  if (!entry) return;
+
+  if (!confirmDeleteEntry(entry)) {
+    showToast("Delete canceled.");
+    return;
+  }
+
   entries = entries.filter((entry) => entry.id !== id);
   await persistVault();
   renderEntries();
@@ -1189,6 +1302,7 @@ function initializeApp() {
   }
 
   showAuthHome();
+  ensureBridgeToken();
   const savedVaultTarget = loadPersistedVaultTarget();
   if (savedVaultTarget?.filePath) {
     vaultTarget = savedVaultTarget;
@@ -1212,6 +1326,10 @@ function initializeApp() {
   generatePassword();
   renderEntries();
   renderUpdateState();
+  syncExtensionBridgeState().catch((error) => {
+    console.error(error);
+    renderExtensionBridgeState();
+  });
 
   if (window.desktopAPI?.onUpdateStatus) {
     window.desktopAPI.onUpdateStatus((payload) => {
@@ -1313,6 +1431,15 @@ importBackupInput.addEventListener("change", (event) => {
 importGoogleInput.addEventListener("change", (event) => {
   const [file] = event.target.files || [];
   importGooglePasswords(file);
+});
+copyBridgeTokenBtn.addEventListener("click", () => {
+  copyText(bridgeTokenValue.textContent, "Pairing code copied.");
+});
+rotateBridgeTokenBtn.addEventListener("click", () => {
+  rotateExtensionBridgeToken().catch((error) => {
+    console.error(error);
+    showToast("Could not create a new pairing code.");
+  });
 });
 updateActionBtn.addEventListener("click", () => {
   if (!window.desktopAPI) {

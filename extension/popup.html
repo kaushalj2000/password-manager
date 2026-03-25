@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PocketVault Autofill</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="popup-shell">
+    <p class="eyebrow">PocketVault</p>
+    <h1>Website Autofill</h1>
+    <p id="statusText" class="status-text">Checking PocketVault desktop app...</p>
+
+    <label class="field-group" for="pairingToken">
+      <span>Pairing code</span>
+      <input id="pairingToken" type="password" placeholder="Paste the code from PocketVault">
+    </label>
+    <button id="saveTokenBtn" class="primary-button" type="button">Save Pairing Code</button>
+
+    <section class="results-block">
+      <div class="results-heading">
+        <h2>Matching logins</h2>
+        <button id="refreshBtn" class="secondary-button" type="button">Refresh</button>
+      </div>
+      <div id="results" class="results-list">
+        <p class="empty-text">Unlock PocketVault and save your pairing code to start autofilling.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>
