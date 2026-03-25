@@ -2,6 +2,8 @@
 
 PocketVault is a desktop password manager built with Electron and a file-based encrypted vault.
 
+PocketVault now includes a Chrome autofill extension that connects to the desktop app while your vault is unlocked.
+
 This app lets you:
 - generate strong random passwords
 - save new passwords
@@ -27,6 +29,16 @@ Instead, it uses:
 That means your passwords stay in a file you control, while still being usable across multiple devices.
 
 ## How To Use
+
+### Downloads
+
+Users need two things:
+1. The PocketVault desktop app from the GitHub Releases page
+2. The PocketVault Autofill extension files from this repo or from a release zip asset
+
+Recommended release assets:
+- Windows installer: `PocketVault-Setup-x.y.z.exe`
+- Chrome extension zip: `PocketVault-Autofill-Extension.zip`
 
 ### First Time Setup
 
@@ -58,14 +70,17 @@ That means your passwords stay in a file you control, while still being usable a
 ### Browser Autofill Setup
 
 1. Open PocketVault on your desktop and unlock your vault.
-2. In Chrome, go to `chrome://extensions`.
-3. Turn on `Developer mode`.
-4. Click `Load unpacked`.
-5. Select the `extension` folder from this project.
-6. Open the `PocketVault Autofill` extension popup.
-7. In the PocketVault desktop app, copy the `Pairing Code` from the `Browser Autofill` card.
-8. Paste that code into the extension popup and click `Save Pairing Code`.
-9. Open a supported login page and use the extension popup to fill a matching login.
+2. Download the PocketVault Autofill extension files.
+3. In Chrome, go to `chrome://extensions`.
+4. Turn on `Developer mode`.
+5. Click `Load unpacked`.
+6. Select the extracted `extension` folder.
+If you downloaded a zip from a GitHub Release, extract it first and then select that folder.
+If you downloaded the source code from GitHub, open the project folder and select `extension`.
+7. Open the `PocketVault Autofill` extension popup.
+8. In the PocketVault desktop app, copy the `Pairing Code` from the `Browser Autofill` card.
+9. Paste that code into the extension popup and click `Save Pairing Code`.
+10. Open a supported login page and use the extension popup to fill a matching login.
 
 ### Browser Autofill Notes
 
@@ -73,6 +88,7 @@ That means your passwords stay in a file you control, while still being usable a
 - The extension connects to PocketVault over `localhost` only.
 - If you rotate the pairing code in PocketVault, update it in the extension too.
 - This first version fills websites from the extension popup instead of auto-filling silently on every page.
+- The extension is currently installed as an unpacked Chrome extension, not from the Chrome Web Store.
 
 ### Important Tips
 
@@ -100,6 +116,7 @@ That means your passwords stay in a file you control, while still being usable a
 ## Features
 
 - Electron desktop app for Windows and Mac
+- Chrome extension for website autofill
 - Native open/save dialogs for vault files
 - AES-GCM encrypted vault data
 - PBKDF2-based key derivation from a master password
